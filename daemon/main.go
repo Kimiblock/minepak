@@ -119,6 +119,7 @@ func main() {
 
 
 	// Temp: just trigger exit here
+	//panic("test")
 	time.Sleep(5 * time.Second)
 	shutdownChan <- 1
 
