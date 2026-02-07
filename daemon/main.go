@@ -5,6 +5,8 @@ import (
 	"github.com/BurntSushi/toml"
 	"os"
 	"io"
+	"github.com/boltdb/bolt"
+	"time"
 )
 
 const (
@@ -18,10 +20,11 @@ var (
 
 var config struct {
 	LogLevel		int		// 1 for debug, 2 for info, 3 for warning
+	Database		string
 }
 
 func shutdownWorker() {
-	<- shutdownChan
+
 	// TODO: actual shutdown logic here
 
 	// Runs at last
@@ -41,7 +44,8 @@ func loggingWorker(loglevel chan int) {
 			case "warn":
 				msgLevel = 3
 			case "crit":
-				panic("incoming[1]")
+				fmt.Println("Critical: " + "incoming[1]")
+				shutdownChan <- 1
 		}
 		if userLevel <= msgLevel {
 			/* SCARY!!!
@@ -63,11 +67,6 @@ func pecho(level string, msg string) {
 		msg,
 	}
 }
-
-/*
-	Dropped it in favour of absolute path
-*/
-//func lookupConfPath() {}
 
 func readConf(loglevel chan int) {
 
@@ -111,7 +110,16 @@ func main() {
 	fmt.Println("minepak version", version)
 	go loggingWorker(loglevelChan)
 	readConf(loglevelChan)
+	db, err := bolt.Open(config.Database, 0700, &bolt.Options{Timeout: 15 * time.Second})
+	if err != nil {
+		pecho("crit", "Could not open database: " + err.Error())
+	}
+	defer db.Close()
 
 
+	// Temp: just trigger exit here
+	shutdownChan <- 1
+
+	<- shutdownChan
 	shutdownWorker()
 }

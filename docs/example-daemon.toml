@@ -4,3 +4,6 @@
 # 	2	-> Info
 # 	3	-> Warning
 logLevel = 1
+
+# Absolute path to the database
+database = "example.bolt"
