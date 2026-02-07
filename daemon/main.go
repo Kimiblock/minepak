@@ -104,6 +104,8 @@ func readConf(loglevel chan int) {
 	loglevel <- config.LogLevel
 }
 
+func startServerCore() {}
+
 func main() {
 	var loglevelChan = make(chan int)
 	fmt.Println("minepak version", version)
