@@ -108,6 +108,8 @@ func main() {
 	var loglevelChan = make(chan int)
 	fmt.Println("minepak version", version)
 	go loggingWorker(loglevelChan)
-	go shutdownWorker()
 	readConf(loglevelChan)
+
+
+	shutdownWorker()
 }
