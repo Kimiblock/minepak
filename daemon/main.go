@@ -23,9 +23,14 @@ var config struct {
 	Database		string
 }
 
-func shutdownWorker() {
+var runtimeInfo struct {
+	serverStarted		bool
+}
 
+func shutdownWorker() {
+	<- shutdownChan
 	// TODO: actual shutdown logic here
+	pecho("info", "Shutting down...")
 
 	// Runs at last
 	close(logChan)
@@ -103,7 +108,33 @@ func readConf(loglevel chan int) {
 	loglevel <- config.LogLevel
 }
 
-func startServerCore() {}
+func startServerCore(db *bolt.DB) string {
+	if runtimeInfo.serverStarted == true {
+		return "collision"
+	}
+	runtimeInfo.serverStarted = true
+	var serverKind string
+	var serverPath string
+	err := db.Batch(
+		func(tx *bolt.Tx) error {
+			bucket := tx.Bucket([]byte("Core"))
+			if bucket == nil {
+				pecho("warn", "Aborting start: no core installed")
+				return nil
+			}
+			serverKind = string(bucket.Get([]byte("kind")))
+			serverPath = string(bucket.Get([]byte("path")))
+			return nil
+		},
+	)
+	if err != nil {
+		pecho("warn", "Could not get server information, aborting start: " + err.Error())
+	}
+
+	pecho("debug", "Got server information: " + serverKind + " " + serverPath)
+
+	return "finished"
+}
 
 func main() {
 	var loglevelChan = make(chan int)
@@ -116,6 +147,8 @@ func main() {
 	}
 	defer db.Close()
 	pecho("debug", "Opened database")
+	pecho("debug", "Attempting start")
+	go startServerCore(db)
 
 
 	// Temp: just trigger exit here
@@ -123,6 +156,5 @@ func main() {
 	time.Sleep(5 * time.Second)
 	shutdownChan <- 1
 
-	<- shutdownChan
 	shutdownWorker()
 }
