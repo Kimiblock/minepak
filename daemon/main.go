@@ -1,0 +1,113 @@
+package main
+
+import (
+	"fmt"
+	"github.com/BurntSushi/toml"
+	"os"
+	"io"
+)
+
+const (
+	version		uint	= 	0
+)
+
+var (
+	shutdownChan		= make(chan int)
+	logChan			= make(chan []string, 512)
+)
+
+var config struct {
+	LogLevel		int		// 1 for debug, 2 for info, 3 for warning
+}
+
+func shutdownWorker() {
+	<- shutdownChan
+	// TODO: actual shutdown logic here
+
+	// Runs at last
+	close(logChan)
+}
+
+func loggingWorker(loglevel chan int) {
+	userLevel := <- loglevel
+	pecho("debug", "Started logging daemon")
+	for incoming := range logChan {
+		msgLevel := 0
+		switch incoming[0] {
+			case "debug":
+				msgLevel = 1
+			case "info":
+				msgLevel = 2
+			case "warn":
+				msgLevel = 3
+			case "crit":
+				panic("incoming[1]")
+		}
+		if userLevel <= msgLevel {
+			/* SCARY!!!
+			This will panic on malformed events...
+			We better guard the channel behind a function
+			*/
+			fmt.Println(
+				"[", incoming[0], "]: ",
+				incoming[1],
+			)
+		}
+	}
+	fmt.Println("The logging daemon has shutdown")
+}
+
+func pecho(level string, msg string) {
+	logChan <- []string{
+		level,
+		msg,
+	}
+}
+
+/*
+	Dropped it in favour of absolute path
+*/
+//func lookupConfPath() {}
+
+func readConf(loglevel chan int) {
+
+	// Set defaults
+	config.LogLevel = 2
+
+	rawConfPath := os.Getenv("_minepakConfig")
+	if len(rawConfPath) == 0 {
+		panic("Did not find anything in $_minepakConfig")
+	}
+	fd, err := os.OpenFile(
+		rawConfPath,
+		os.O_RDONLY,
+		0700,
+	)
+	if err != nil {
+		if os.IsNotExist(err) {
+			panic("Specified configuration does not exist")
+		} else {
+			panic("Could not open configuration file: " + err.Error())
+		}
+	}
+	defer fd.Close()
+	ioRead, ioErr := io.ReadAll(fd)
+	if ioErr != nil {
+		panic("Could not read read configuration: " + ioErr.Error())
+	}
+
+	decode, decodeErr := toml.Decode(string(ioRead), &config)
+	if decodeErr != nil {
+		panic("Could not decode configuration: " + decodeErr.Error())
+	}
+	fmt.Println("Unknown configuration: ", decode.Undecoded())
+	loglevel <- config.LogLevel
+}
+
+func main() {
+	var loglevelChan = make(chan int)
+	fmt.Println("minepak version", version)
+	go loggingWorker(loglevelChan)
+	go shutdownWorker()
+	readConf(loglevelChan)
+}
