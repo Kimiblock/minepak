@@ -57,7 +57,7 @@ func loggingWorker(loglevel chan int) {
 			case "crit":
 				fmt.Println("Critical: " + "incoming[1]")
 				shutdownChan <- 1
-				break
+				return
 		}
 		if userLevel <= msgLevel {
 			/* SCARY!!!
