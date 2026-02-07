@@ -14,7 +14,7 @@ const (
 )
 
 var (
-	shutdownChan		= make(chan int)
+	shutdownChan		= make(chan int, 1)
 	logChan			= make(chan []string, 512)
 )
 
@@ -115,9 +115,11 @@ func main() {
 		pecho("crit", "Could not open database: " + err.Error())
 	}
 	defer db.Close()
+	pecho("debug", "Opened database")
 
 
 	// Temp: just trigger exit here
+	time.Sleep(5 * time.Second)
 	shutdownChan <- 1
 
 	<- shutdownChan
