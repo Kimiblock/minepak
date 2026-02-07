@@ -7,6 +7,9 @@ import (
 	"io"
 	"github.com/boltdb/bolt"
 	"time"
+	"net"
+	"encoding/json"
+	"bufio"
 )
 
 const (
@@ -21,10 +24,12 @@ var (
 var config struct {
 	LogLevel		int		// 1 for debug, 2 for info, 3 for warning
 	Database		string
+	RuntimeDirectory	string
 }
 
 var runtimeInfo struct {
 	serverStarted		bool
+	controlListen		net.Listener
 }
 
 func shutdownWorker() {
@@ -32,6 +37,7 @@ func shutdownWorker() {
 	// TODO: actual shutdown logic here
 	pecho("info", "Shutting down...")
 
+	runtimeInfo.controlListen.Close()
 	// Runs at last
 	close(logChan)
 }
@@ -51,6 +57,7 @@ func loggingWorker(loglevel chan int) {
 			case "crit":
 				fmt.Println("Critical: " + "incoming[1]")
 				shutdownChan <- 1
+				break
 		}
 		if userLevel <= msgLevel {
 			/* SCARY!!!
@@ -71,6 +78,43 @@ func pecho(level string, msg string) {
 		level,
 		msg,
 	}
+}
+
+func handleControlSig(conn net.Conn) {
+	pecho("info", "Handling incoming control event")
+	sigSlice := []string{}
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
+		line := scanner.Text()
+		err := json.Unmarshal([]byte(line), &sigSlice)
+		if err != nil {
+			pecho("warn", "Could not read control signal: " + err.Error())
+		}
+	}
+}
+
+func listenSignals() {
+	err := os.MkdirAll(config.RuntimeDirectory + "/minepak", 0755)
+	if err != nil {
+		pecho("crit", "Failed to create runtime directory: " + err.Error())
+	}
+	runtimeInfo.controlListen, err = net.Listen(
+		"unix",
+		config.RuntimeDirectory + "/minepak/control",
+	)
+	if err != nil {
+		pecho("crit", "Could not listen on control socket: " + err.Error())
+	}
+	pecho("debug", "Listening control signals")
+	for {
+		conn, connErr := runtimeInfo.controlListen.Accept()
+		if connErr != nil {
+			pecho("info", "Signal listener stopped: " + connErr.Error())
+			return
+		}
+		go handleControlSig(conn)
+	}
+
 }
 
 func readConf(loglevel chan int) {
@@ -149,6 +193,7 @@ func main() {
 	pecho("debug", "Opened database")
 	pecho("debug", "Attempting start")
 	go startServerCore(db)
+	go listenSignals()
 
 
 	// Temp: just trigger exit here

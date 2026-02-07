@@ -7,3 +7,6 @@ logLevel = 1
 
 # Absolute path to the database
 database = "example.bolt"
+
+# The runtime directory used for creating sockets
+runtimeDirectory = "/tmp"
