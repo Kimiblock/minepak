@@ -110,6 +110,9 @@ func handleControlSig(conn net.Conn) {
 				pecho("info", "Attempting server start...")
 				startCoreChan <- 1
 				pecho("debug", "Dispatched start job")
+
+			default:
+				pecho("warn", "Unknown control signal: " + control)
 		}
 	} else {
 		pecho("warn", "Could not handle signal: empty data")
