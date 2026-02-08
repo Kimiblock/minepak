@@ -19,6 +19,7 @@ const (
 var (
 	shutdownChan		= make(chan int, 1)
 	logChan			= make(chan []string, 512)
+	startCoreChan		= make(chan int)
 )
 
 var config struct {
@@ -102,7 +103,14 @@ func handleControlSig(conn net.Conn) {
 		)
 	}
 	if len(sigSlice) > 0 {
-		pecho("debug", "Got signal: " + sigSlice[0])
+		control := sigSlice[0]
+		pecho("debug", "Got signal: " + control)
+		switch control {
+			case "start":
+				pecho("info", "Attempting server start...")
+				startCoreChan <- 1
+				pecho("debug", "Dispatched start job")
+		}
 	} else {
 		pecho("warn", "Could not handle signal: empty data")
 		return
@@ -168,6 +176,7 @@ func readConf(loglevel chan int) {
 }
 
 func startServerCore(db *bolt.DB) string {
+	for {
 	if runtimeInfo.serverStarted == true {
 		return "collision"
 	}
@@ -192,7 +201,10 @@ func startServerCore(db *bolt.DB) string {
 
 	pecho("debug", "Got server information: " + serverKind + " " + serverPath)
 
-	return "finished"
+
+
+	<- startCoreChan
+	}
 }
 
 func main() {
