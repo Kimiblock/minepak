@@ -80,6 +80,11 @@ func pecho(level string, msg string) {
 	}
 }
 
+/*
+	For now the proposal for first batch of data is listed below:
+		Element 1	Defines the actual action, like install or something
+		Element [2:]	whatever flags and control data
+*/
 func handleControlSig(conn net.Conn) {
 	pecho("info", "Handling incoming control event")
 	sigSlice := []string{}
@@ -95,6 +100,12 @@ func handleControlSig(conn net.Conn) {
 			sigSlice,
 			volitaleSlice...
 		)
+	}
+	if len(sigSlice) > 0 {
+		pecho("debug", "Got signal: " + sigSlice[0])
+	} else {
+		pecho("warn", "Could not handle signal: empty data")
+		return
 	}
 }
 
