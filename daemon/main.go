@@ -85,11 +85,16 @@ func handleControlSig(conn net.Conn) {
 	sigSlice := []string{}
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
+		var volitaleSlice []string
 		line := scanner.Text()
-		err := json.Unmarshal([]byte(line), &sigSlice)
+		err := json.Unmarshal([]byte(line), &volitaleSlice)
 		if err != nil {
 			pecho("warn", "Could not read control signal: " + err.Error())
 		}
+		sigSlice = append(
+			sigSlice,
+			volitaleSlice...
+		)
 	}
 }
 
@@ -114,7 +119,6 @@ func listenSignals() {
 		}
 		go handleControlSig(conn)
 	}
-
 }
 
 func readConf(loglevel chan int) {
