@@ -10,3 +10,6 @@ database = "example.bolt"
 
 # The runtime directory used for creating sockets
 runtimeDirectory = "/tmp"
+
+# Temporary directory to host cache produced by daemon
+temporaryDirectory = "/tmp/123456"
