@@ -13,3 +13,9 @@ runtimeDirectory = "/tmp"
 
 # Temporary directory to host cache produced by daemon. If unset, defaults to /tmp
 # temporaryDirectory = "/tmp/123456"
+
+# Java executable path, defaults to "java"
+# javaPath = ""
+
+# JVM arguments, separated by spaces
+# jvmArgs = ""

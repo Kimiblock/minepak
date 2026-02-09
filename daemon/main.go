@@ -17,6 +17,8 @@ import (
 	"compress/gzip"
 	"archive/tar"
 	"path/filepath"
+	"os/exec"
+	"strings"
 )
 
 const (
@@ -35,6 +37,8 @@ var config struct {
 	Database		string
 	RuntimeDirectory	string
 	TemporaryDirectory	string
+	JavaPath		string
+	JvmArgs			string
 }
 
 var runtimeInfo struct {
@@ -441,6 +445,7 @@ func listenSignals(db *bolt.DB) {
 func readConf(loglevel chan int) {
 	// Set defaults
 	config.LogLevel = 2
+	config.JavaPath = "java"
 
 	rawConfPath := os.Getenv("_minepakConfig")
 	if len(rawConfPath) == 0 {
@@ -501,6 +506,19 @@ func startServerCore(db *bolt.DB) string {
 	pecho(
 	"debug",
 	"Got server information: " + serverKind + " " + serverVer + " @" + serverPath)
+
+
+	args := strings.Split(config.JvmArgs, " ")
+
+
+	execCmd := exec.Command(config.JavaPath, args...)
+	execCmd.Stdout = os.Stdout
+	// This takes away the stdin, but shoul be fine
+	execCmd.Stdin = os.Stdin
+	execCmd.Stderr = os.Stderr
+
+	pecho("info", "Starting server...")
+	execCmd.Run()
 
 
 
