@@ -318,7 +318,8 @@ func unknownSigHandler(writer http.ResponseWriter, req *http.Request) {
 	resp.log = "Unknown operation"
 	jsonObj, _ := json.Marshal(resp)
 	writer.Write(jsonObj)
-	pecho("warn", "Got unknown signal")
+	url := req.RequestURI
+	pecho("warn", "Got unknown signal on " + url)
 }
 
 func listenSignals() {
