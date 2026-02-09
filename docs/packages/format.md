@@ -11,3 +11,6 @@ top.kimiblock.minepak.package/
 |- object/
    |-- ... (Files meant to be managed by the package manager)
 ```
+
+
+The bolt data base MUST have 2 buckets: metadata and files. The former one MUST store `name` and `core`, whereas files must hold a `object:relpath` key-value relationship.
