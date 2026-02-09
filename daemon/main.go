@@ -8,8 +8,10 @@ import (
 	"github.com/boltdb/bolt"
 	"time"
 	"net"
+	"net/http"
+	"mime/multipart"
 	"encoding/json"
-	"bufio"
+	//"bufio"
 	"math/rand"
 	"strconv"
 )
@@ -34,6 +36,11 @@ var config struct {
 var runtimeInfo struct {
 	serverStarted		bool
 	controlListen		net.Listener
+}
+
+type response struct {
+	success		bool;
+	log		string;
 }
 
 func shutdownWorker() {
@@ -83,47 +90,6 @@ func pecho(level string, msg string) {
 		msg,
 	}
 }
-
-/*
-	For now the proposal for first batch of data is listed below:
-		Element 1	Defines the actual action, like install or something
-		Element [2:]	whatever flags and control data
-*/
-func handleControlSig(conn net.Conn) {
-	pecho("info", "Handling incoming control event")
-	sigSlice := []string{}
-	scanner := bufio.NewScanner(conn)
-	for scanner.Scan() {
-		var volitaleSlice []string
-		line := scanner.Text()
-		err := json.Unmarshal([]byte(line), &volitaleSlice)
-		if err != nil {
-			pecho("warn", "Could not read control signal: " + err.Error())
-		}
-		sigSlice = append(
-			sigSlice,
-			volitaleSlice...
-		)
-		break
-	}
-	if len(sigSlice) > 0 {
-		control := sigSlice[0]
-		pecho("debug", "Got signal: " + control)
-		switch control {
-			case "start":
-				pecho("info", "Attempting server start...")
-				startCoreChan <- 1
-				pecho("debug", "Dispatched start job")
-
-			default:
-				pecho("warn", "Unknown control signal: " + control)
-		}
-	} else {
-		pecho("warn", "Could not handle signal: empty data")
-		return
-	}
-}
-
 func pickTempDir() string {
 	if config.TemporaryDirectory == "" {
 		pecho(
@@ -165,35 +131,6 @@ func pickTempDir() string {
 	}
 }
 
-func pickStreamSock() (conn net.Conn, sock string) {
-	var trials uint
-	for {
-		if trials > 2147483647 {
-			pecho("warn", "Could not pick a stream socket: no available name")
-			return
-		}
-		sockPath := config.RuntimeDirectory + "/minepak/stream-" + strconv.Itoa(
-			rand.Intn(2147483647),
-		)
-		listener, err := net.Listen("unix", sockPath)
-		if err != nil {
-			trials++
-			pecho("debug", "Could not listen for data: " + err.Error())
-		} else {
-			conn, err = listener.Accept()
-			if err != nil {
-				pecho("warn", "Could not receive data: " + err.Error())
-				sock = "Could not receive data: " + err.Error()
-				conn = nil
-				return
-			}
-		}
-	}
-
-}
-
-func failBack(conn net.Conn)
-
 // Notify the other end to send data, then receive
 
 /*
@@ -204,9 +141,9 @@ func failBack(conn net.Conn)
 	This is cursed, should do JSON over HTTP
 */
 
-func installPackageFromSocket(conn net.Conn) {
-	ready, _ := json.Marshal("send-package-data")
-	conn.Write([]byte(ready))
+func installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	var resp response
 	pecho("debug", "Receiving data from client...")
 	tempPath := pickTempDir()
 	fd, err := os.OpenFile(
@@ -216,40 +153,18 @@ func installPackageFromSocket(conn net.Conn) {
 	)
 	if err != nil {
 		pecho("warn", "Could not receive package: " + err.Error())
-		var errMsg = []string{
-			"fail",
-			"Daemon could not receive package: " + err.Error(),
-		}
-		jsonObj, _ := json.Marshal(errMsg)
-		conn.Write(jsonObj)
+		resp.success = false
+		resp.log = "Daemon could not receive package: " + err.Error()
+		jsonObj, _ := json.Marshal(resp)
+		writer.Write(jsonObj)
 	}
-	connStream, sock := pickStreamSock()
-	if connStream == nil {
-		var errMsg = []string{
-			"fail",
-			sock,
-		}
-		jsonObj, _ := json.Marshal(errMsg)
-		conn.Write(jsonObj)
-		return
-	}
-	var errMsg = []string{
-		"fail",
-		sock,
-	}
-	jsonObj, _ := json.Marshal(errMsg)
-	conn.Write(jsonObj)
-	pecho("debug", "Sent streaming socket")
-	dataCount, errIO := io.Copy(fd, connStream) // Note: other end should close conn
-	if errIO != nil {
-		errMsgp := "Could not receive data: " + errIO.Error()
-		pecho("warn", errMsgp)
-		var errMsg = []string{
-			"fail",
-			errMsgp,
-		}
-		jsonObj, _ := json.Marshal(errMsg)
-	}
+}
+
+func unknownSigHandler(writer http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	var resp response
+	resp.success = false
+	resp.log = "Unknown operation"
 }
 
 func listenSignals() {
@@ -265,14 +180,12 @@ func listenSignals() {
 		pecho("crit", "Could not listen on control socket: " + err.Error())
 	}
 	pecho("debug", "Listening control signals")
-	for {
-		conn, connErr := runtimeInfo.controlListen.Accept()
-		if connErr != nil {
-			pecho("info", "Signal listener stopped: " + connErr.Error())
-			return
-		}
-		go handleControlSig(conn)
-	}
+
+	http.HandleFunc("/", unknownSigHandler)
+	http.HandleFunc("/instpkg", installPackageFromSocket)
+
+
+	http.Serve(runtimeInfo.controlListen, nil)
 }
 
 func readConf(loglevel chan int) {
