@@ -50,6 +50,13 @@ type response struct {
 type pkgInfo struct {
 	name		string;
 	core		bool;
+	installed	bool;
+	flavor		string;
+	requireCore	string;
+	version		string;
+	epoch		int;
+	depends		[]string;
+	configs		[]string;
 }
 
 type dbInfo struct {
@@ -142,6 +149,13 @@ func pickTempDir() string {
 			}
 		}
 	}
+}
+
+func checkPkgData(dbconn *bolt.DB, pkgname string) (pkgInfo, corePath string) {
+	dbconn.View(func(tx *bolt.Tx) error {
+		bucket :=
+		return nil
+	})
 }
 
 // Notify the other end to send data, then receive
@@ -473,7 +487,7 @@ func startServerCore(db *bolt.DB) string {
 				pecho("warn", "Aborting start: no core installed")
 				return nil
 			}
-			serverKind = string(bucket.Get([]byte("kind")))
+			serverKind = string(bucket.Get([]byte("flavor")))
 			serverPath = string(bucket.Get([]byte("path")))
 			return nil
 		},
