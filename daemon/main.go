@@ -172,7 +172,7 @@ func checkPkgData(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo, corePath
 			}
 			installed = true
 			var core bool
-			core, err = strconv.ParseBool(string(bucket.Get([]byte("installed"))))
+			core, err = strconv.ParseBool(string(bucket.Get([]byte("core"))))
 			if err != nil {
 				pecho("warn", "Treating unknown core status as false")
 			}
