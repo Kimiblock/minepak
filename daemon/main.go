@@ -15,6 +15,8 @@ import (
 	"math/rand"
 	"strconv"
 	"compress/gzip"
+	"archive/tar"
+	"path/filepath"
 )
 
 const (
@@ -43,6 +45,11 @@ var runtimeInfo struct {
 type response struct {
 	success		bool;
 	log		string;
+}
+
+type pkgInfo struct {
+	name		string;
+	core		bool;
 }
 
 func shutdownWorker() {
@@ -147,7 +154,7 @@ func installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
 	tempPath := pickTempDir()
 	fd, err := os.OpenFile(
 		tempPath + "pack.file",
-		os.O_CREATE|os.O_WRONLY|os.O_TRUNC,
+		os.O_CREATE|os.O_RDWR|os.O_TRUNC,
 		0700,
 	)
 	if err != nil {
@@ -163,6 +170,7 @@ func installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
 	var bytes int64
 	bytes, err = io.Copy(fd, req.Body)
 	pecho("debug", "Got " + strconv.Itoa(int(bytes)) + " bytes from client")
+	fd.Seek(0, io.SeekStart)
 	bufReader := bufio.NewReader(fd)
 	reader := multipart.NewReader(bufReader, mpBound)
 
@@ -183,7 +191,7 @@ func installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	gzipReader, gErr := gzip.NewReader(fd)
+	gzipReader, gErr := gzip.NewReader(part)
 	if gErr != nil {
 		pecho("warn", "Could not decompress GZip archive: " + gErr.Error())
 		resp.success = false
@@ -193,28 +201,93 @@ func installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	pkgFile, pkgErr := os.OpenFile(
-		tempPath + "/decompressed.file",
-		os.O_CREATE|os.O_TRUNC|os.O_WRONLY,
-		0700,
+	tarReader := tar.NewReader(gzipReader)
+
+	for {
+		header, headErr := tarReader.Next()
+		if headErr != nil {
+			if headErr == io.EOF {
+				break
+			}
+			pecho("warn", "Malformed archive")
+			resp.log = "Malformed package"
+			resp.success = false
+		}
+		targetPath := filepath.Join(tempPath, header.Name)
+		switch header.Typeflag {
+			case tar.TypeDir:
+				os.MkdirAll(targetPath, 0700)
+			case tar.TypeReg:
+				tgFd, err := os.OpenFile(
+					targetPath,
+					os.O_CREATE|os.O_TRUNC|os.O_CREATE,
+					0700,
+				)
+				if err != nil {
+					pecho("warn", "Could not open file for writing: " + err.Error())
+					continue
+				}
+				io.Copy(tgFd, tarReader)
+				tgFd.Close()
+			default:
+				pecho("warn", "Could not handle header typeflag")
+		}
+	}
+
+	dbPath := filepath.Join(
+		tempPath,
+		"top.kimiblock.minepak.package",
+		"info",
+		"metadata.bolt",
 	)
-	if pkgErr != nil {
-		pecho("warn", "I/O error writing package: " + pkgErr.Error())
-		resp.success = false
-		resp.log = "Daemon could not store package: I/O error writing package: " + pkgErr.Error()
-		jsonObj, _ := json.Marshal(resp)
-		writer.Write(jsonObj)
-		return
-	}
-	_, err = io.Copy(pkgFile, gzipReader)
+
+	db, err := bolt.Open(dbPath, 0700, nil)
 	if err != nil {
-		pecho("warn", "I/O error writing package: " + err.Error())
+		pecho("warn", "Could not read malformed package database")
+		resp.log = "Daemon could not read corrupted database"
 		resp.success = false
-		resp.log = "Daemon could not store package: I/O error writing package: " + err.Error()
 		jsonObj, _ := json.Marshal(resp)
 		writer.Write(jsonObj)
 		return
 	}
+
+	var info pkgInfo
+
+	err = db.View(func(tx *bolt.Tx) error {
+		bucketName := "metadata"
+		bucket := tx.Bucket([]byte(bucketName))
+		if bucket == nil {
+			resp.success = false
+			resp.log = "Daemon could not read package: Malformed database"
+			pecho("warn", "Could not read package: Malformed database")
+			jsonObj, _ := json.Marshal(resp)
+			writer.Write(jsonObj)
+			return nil
+		}
+		pkgname := bucket.Get([]byte("name"))
+		pkgtype := bucket.Get([]byte("core"))
+		if len(pkgname) == 0 || len(pkgtype) == 0 {
+			pecho("warn", "Malformed package database")
+			resp.success = false
+			resp.log = "Malformed package database"
+			jsonObj, _ := json.Marshal(resp)
+			writer.Write(jsonObj)
+			return nil
+		}
+		info.name = string(pkgname)
+		if string(pkgtype) == "core" {
+			info.core = true
+		} else {
+			info.core = false
+		}
+		return nil
+	})
+
+	if len(resp.log) > 0 {
+		return
+	}
+
+	db.Close()
 
 }
 
