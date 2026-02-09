@@ -11,13 +11,15 @@ import (
 	"net/http"
 	"mime/multipart"
 	"encoding/json"
-	//"bufio"
+	"bufio"
 	"math/rand"
 	"strconv"
+	"compress/gzip"
 )
 
 const (
 	version		uint	= 	0
+	mpBound		string	=	"top.kimiblock.minepak.boundary-sus"
 )
 
 var (
@@ -134,11 +136,8 @@ func pickTempDir() string {
 // Notify the other end to send data, then receive
 
 /*
-	Sender should do this:
-	var size int64
-	binary.Read(conn, binary.BigEndian, &size)
-
-	This is cursed, should do JSON over HTTP
+	For now there's only one part in a mp message,
+	the client should send header minepakType = package
 */
 
 func installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
@@ -157,7 +156,66 @@ func installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
 		resp.log = "Daemon could not receive package: " + err.Error()
 		jsonObj, _ := json.Marshal(resp)
 		writer.Write(jsonObj)
+		return
 	}
+	defer fd.Close()
+
+	var bytes int64
+	bytes, err = io.Copy(fd, req.Body)
+	pecho("debug", "Got " + strconv.Itoa(int(bytes)) + " bytes from client")
+	bufReader := bufio.NewReader(fd)
+	reader := multipart.NewReader(bufReader, mpBound)
+
+	part, partErr := reader.NextPart()
+	if partErr != nil {
+		pecho("warn", "Could not read streamed data: " + partErr.Error())
+		resp.success = false
+		resp.log = "Daemon could not read streamed data: " + partErr.Error()
+		jsonObj, _ := json.Marshal(resp)
+		writer.Write(jsonObj)
+		return
+	} else if part.Header.Get("minepakType") != "package" {
+		pecho("warn", "Invalid data type received")
+		resp.success = false
+		resp.log = "Daemon could not read streamed data: " + "Invalid data type received"
+		jsonObj, _ := json.Marshal(resp)
+		writer.Write(jsonObj)
+		return
+	}
+
+	gzipReader, gErr := gzip.NewReader(fd)
+	if gErr != nil {
+		pecho("warn", "Could not decompress GZip archive: " + gErr.Error())
+		resp.success = false
+		resp.log = "Daemon could not decompress GZip archive: " + gErr.Error()
+		jsonObj, _ := json.Marshal(resp)
+		writer.Write(jsonObj)
+		return
+	}
+
+	pkgFile, pkgErr := os.OpenFile(
+		tempPath + "/decompressed.file",
+		os.O_CREATE|os.O_TRUNC|os.O_WRONLY,
+		0700,
+	)
+	if pkgErr != nil {
+		pecho("warn", "I/O error writing package: " + pkgErr.Error())
+		resp.success = false
+		resp.log = "Daemon could not store package: I/O error writing package: " + pkgErr.Error()
+		jsonObj, _ := json.Marshal(resp)
+		writer.Write(jsonObj)
+		return
+	}
+	_, err = io.Copy(pkgFile, gzipReader)
+	if err != nil {
+		pecho("warn", "I/O error writing package: " + err.Error())
+		resp.success = false
+		resp.log = "Daemon could not store package: I/O error writing package: " + err.Error()
+		jsonObj, _ := json.Marshal(resp)
+		writer.Write(jsonObj)
+		return
+	}
+
 }
 
 func unknownSigHandler(writer http.ResponseWriter, req *http.Request) {

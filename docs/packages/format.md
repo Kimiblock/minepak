@@ -7,7 +7,7 @@ top.kimiblock.minepak.package/
 |
 |
 |- info/
-   |-- metadata.bolt (A bolt database which stores all files)
+   |-- metadata.bolt (A bolt database which stores all files and metadata)
 |- object/
    |-- ... (Files meant to be managed by the package manager)
 ```
