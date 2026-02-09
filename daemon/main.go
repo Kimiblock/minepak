@@ -252,6 +252,7 @@ func installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
 	}
 
 	var info pkgInfo
+	var fileMap = make(map[string]string)
 
 	err = db.View(func(tx *bolt.Tx) error {
 		bucketName := "metadata"
@@ -280,12 +281,31 @@ func installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
 		} else {
 			info.core = false
 		}
+
+		bucketName = "files"
+		bucket = tx.Bucket([]byte(bucketName))
+		if bucket == nil {
+			resp.success = false
+			resp.log = "Daemon could not read package: Malformed database"
+			pecho("warn", "Could not read package: Malformed database")
+			jsonObj, _ := json.Marshal(resp)
+			writer.Write(jsonObj)
+			return nil
+		}
+		cursor := bucket.Cursor()
+		for key, val := cursor.First(); key != nil; key, val = cursor.Next() {
+			fileMap[string(key)] = string(val)
+		}
+
+		pecho("debug", "Finished resolving file map")
+
 		return nil
 	})
-
 	if len(resp.log) > 0 {
 		return
 	}
+
+
 
 	db.Close()
 
