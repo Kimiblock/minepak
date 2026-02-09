@@ -480,6 +480,7 @@ func startServerCore(db *bolt.DB) string {
 	runtimeInfo.serverStarted = true
 	var serverKind string
 	var serverPath string
+	var serverVer string
 	err := db.Batch(
 		func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte("Core"))
@@ -488,7 +489,8 @@ func startServerCore(db *bolt.DB) string {
 				return nil
 			}
 			serverKind = string(bucket.Get([]byte("flavor")))
-			serverPath = string(bucket.Get([]byte("path")))
+			serverPath = string(bucket.Get([]byte("server-core")))
+			serverVer = string(bucket.Get([]byte(epoch))) + ":" + string(bucket.Get([]byte(version)))
 			return nil
 		},
 	)
@@ -496,7 +498,9 @@ func startServerCore(db *bolt.DB) string {
 		pecho("warn", "Could not get server information, aborting start: " + err.Error())
 	}
 
-	pecho("debug", "Got server information: " + serverKind + " " + serverPath)
+	pecho(
+	"debug",
+	"Got server information: " + serverKind + " " + serverVer + " @" + serverPath)
 
 
 
