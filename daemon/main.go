@@ -52,6 +52,10 @@ type pkgInfo struct {
 	core		bool;
 }
 
+type dbInfo struct {
+	db		*bolt.DB
+}
+
 func shutdownWorker() {
 	<- shutdownChan
 	// TODO: actual shutdown logic here
@@ -147,7 +151,7 @@ func pickTempDir() string {
 	the client should send header minepakType = package
 */
 
-func installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
+func (dbconn *dbInfo) installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	var resp response
 	pecho("debug", "Receiving data from client...")
@@ -322,7 +326,7 @@ func unknownSigHandler(writer http.ResponseWriter, req *http.Request) {
 	pecho("warn", "Got unknown signal on " + url)
 }
 
-func listenSignals() {
+func listenSignals(db *bolt.DB) {
 	err := os.MkdirAll(config.RuntimeDirectory + "/minepak", 0755)
 	if err != nil {
 		pecho("crit", "Failed to create runtime directory: " + err.Error())
@@ -336,8 +340,10 @@ func listenSignals() {
 	}
 	pecho("debug", "Listening control signals")
 
+	srvFunc := &dbInfo{db: db}
+
 	http.HandleFunc("/", unknownSigHandler)
-	http.HandleFunc("/instpkg", installPackageFromSocket)
+	http.HandleFunc("/instpkg", srvFunc.installPackageFromSocket)
 
 
 	http.Serve(runtimeInfo.controlListen, nil)
@@ -422,7 +428,7 @@ func main() {
 	pecho("debug", "Opened database")
 	pecho("debug", "Attempting start")
 	go startServerCore(db)
-	go listenSignals()
+	go listenSignals(db)
 
 
 	// Temp: just trigger exit here
