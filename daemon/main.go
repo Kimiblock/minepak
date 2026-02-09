@@ -155,11 +155,36 @@ func pickTempDir() string {
 	}
 }
 
-func checkPkgData(dbconn *bolt.DB, pkgname string) (pkgInfo, corePath string) {
+// Peer MUST check installed is true!
+func checkPkgData(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo, corePath string) {
 	dbconn.View(func(tx *bolt.Tx) error {
-		bucket :=
+		bucket := tx.Bucket([]byte(pkgname))
+		if bucket != nil {
+			installed, err := strconv.ParseBool(string(bucket.Get([]byte("installed"))))
+			if err != nil {
+				pecho("warn", "Treating unknown installed status as uninstalled")
+				installed = false
+			}
+			if installed == false {
+				returnInfo.installed = false
+				return nil
+			}
+			installed = true
+			var core bool
+			core, err = strconv.ParseBool(string(bucket.Get([]byte("installed"))))
+			if err != nil {
+				pecho("warn", "Treating unknown core status as false")
+			}
+			if core == true {
+				returnInfo.core = true
+			}
+		} else {
+			returnInfo.installed = false
+		}
 		return nil
 	})
+
+	return
 }
 
 // Notify the other end to send data, then receive
