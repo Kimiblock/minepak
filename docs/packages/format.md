@@ -1,6 +1,6 @@
 # Minepak package format
 
-The minepak package format consists of a single file, with the file extension of `.minepak`. It should be a zstd compressed archive, of which has the following structure:
+The minepak package format consists of a single file, with the file extension of `.minepak`. It should be a gzip compressed archive, of which has the following structure:
 
 ```
 top.kimiblock.minepak.package/
