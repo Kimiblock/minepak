@@ -21,7 +21,7 @@ Package bolt database spec:
 [metadata]
 name: package name
 version: version
-epoch: high priority version sort overrider
+epoch: high priority version sort overrider, must be a valid uint
 core: "true" / "false"
 flavor: Paper/Spigot/Folia etc.
 path: Path to the executable jar file (Core only)
@@ -45,7 +45,7 @@ A bucket contains the following KEY=VAL pairs
 [Bucket]
 name: pkgname
 version: version
-epoch: high priority version sort overrider
+epoch: high priority version sort overrider, must be a valid uint
 installed: "true" / "false"
 flavor: Paper/Spigot/Folia etc.
 path: Path to the executable jar file (Core only)
