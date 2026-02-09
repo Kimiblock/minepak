@@ -15,6 +15,26 @@ top.kimiblock.minepak.package/
 
 The bolt data base MUST have 2 buckets: metadata and files. The former one MUST store `name` and `core`, whereas files must hold a `object:relpath` key-value relationship.
 
+Package bolt database spec:
+
+```
+[metadata]
+name: package name
+version: version
+epoch: high priority version sort overrider
+core: "true" / "false"
+flavor: Paper/Spigot/Folia etc.
+path: Path to the executable jar file (Core only)
+requireCore: A core flavour to require on. (Plugin only)
+depends: JSON encoded dependency list
+config: JSON encoded path list
+
+[files]
+obj: path
+```
+
+For a server core package, the `[files]` section MUST only contain the core executable, and it must be located directly in root path. The object name MUST be `server-core`.
+
 
 # Internal database format
 Internal database separates package data into multiple buckets. The bucket name MUST be the same as package name. A special "core" bucket exists for the server core.
@@ -24,7 +44,10 @@ A bucket contains the following KEY=VAL pairs
 ```
 [Bucket]
 name: pkgname
-flavor: Paper/Spigot/Folia etc. (Core only)
+version: version
+epoch: high priority version sort overrider
+installed: "true" / "false"
+flavor: Paper/Spigot/Folia etc.
 path: Path to the executable jar file (Core only)
 requireCore: A core flavour to require on. (Plugin only)
 depends: JSON encoded dependency list
