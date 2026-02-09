@@ -151,7 +151,7 @@ func pickTempDir() string {
 	the client should send header minepakType = package
 */
 
-func (dbconn *dbInfo) installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
+func (dbcore *dbInfo) installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	var resp response
 	pecho("debug", "Receiving data from client...")
@@ -222,6 +222,7 @@ func (dbconn *dbInfo) installPackageFromSocket(writer http.ResponseWriter, req *
 			case tar.TypeDir:
 				os.MkdirAll(targetPath, 0700)
 			case tar.TypeReg:
+				os.MkdirAll(filepath.Dir(targetPath), 0700)
 				tgFd, err := os.OpenFile(
 					targetPath,
 					os.O_CREATE|os.O_TRUNC|os.O_CREATE,
@@ -309,7 +310,68 @@ func (dbconn *dbInfo) installPackageFromSocket(writer http.ResponseWriter, req *
 		return
 	}
 
+	pecho("debug", "Starting installation...")
+	objpath := filepath.Join(
+		tempPath,
+		"object",
+	)
+	for key, val := range fileMap {
+		pecho("debug", "Processing object: " + key)
+		srcFd, err := os.OpenFile(
+			filepath.Join(objpath, key),
+			os.O_RDONLY,
+			0700,
+		)
+		if err != nil {
+			if os.IsNotExist(err) {
+				pecho(
+				"warn",
+				"Could not install package: missing object " + key + " for path " + val)
+				resp.success = false
+				resp.log = "Daemon could not read corrupted package"
+				jsonObj, _ := json.Marshal(resp)
+				writer.Write(jsonObj)
+				return
+			}
+			resp.success = false
+			resp.log = "Daemon could not open object: " + err.Error()
+			jsonObj, _ := json.Marshal(resp)
+			writer.Write(jsonObj)
+			pecho("warn", resp.log)
+			return
+		}
+		defer srcFd.Close()
 
+		err = os.MkdirAll(filepath.Dir(val), 0700)
+		if err != nil {
+			pecho("warn", "Failed to create directory: " + err.Error())
+			resp.success = false
+			resp.log = "Daemon failed to create directory: " + err.Error()
+			jsonObj, _ := json.Marshal(resp)
+			writer.Write(jsonObj)
+			return
+		}
+		dstFd, dstErr := os.OpenFile(val, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0700)
+		if dstErr != nil {
+			pecho("warn", "Could not open destination: " + dstErr.Error())
+			resp.success = false
+			resp.log = "Daemon could not open destination: " + dstErr.Error()
+			jsonObj, _ := json.Marshal(resp)
+			writer.Write(jsonObj)
+		}
+		defer dstFd.Close()
+		var bytes int64
+		bytes, err = io.Copy(dstFd, srcFd)
+		if err != nil {
+			pecho("warn", "I/O error writing file: " + err.Error())
+			resp.success = false
+			resp.log = "Daemon caught" + "I/O error writing file: " + err.Error()
+			jsonObj, _ := json.Marshal(resp)
+			writer.Write(jsonObj)
+			return
+		}
+		pecho("debug", "Wrote " + strconv.Itoa(int(bytes)) + " bytes")
+	}
 
 	db.Close()
 
