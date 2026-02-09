@@ -25,6 +25,7 @@ A bucket contains the following KEY=VAL pairs
 [Bucket]
 name: pkgname
 flavor: Paper/Spigot/Folia etc. (Core only)
+path: Path to the executable jar file (Core only)
 requireCore: A core flavour to require on. (Plugin only)
 depends: JSON encoded dependency list
 config: JSON encoded path list
