@@ -373,8 +373,21 @@ func (dbcore *dbInfo) installPackageFromSocket(writer http.ResponseWriter, req *
 		pecho("debug", "Wrote " + strconv.Itoa(int(bytes)) + " bytes")
 	}
 
+	go cleanOnTimer(tempPath, 1*time.Minute)
+
 	db.Close()
 
+}
+
+func cleanOnTimer(path string, timer time.Duration) {
+	time.Sleep(timer)
+	pecho("debug", "Cleaning up " + path)
+	err := os.RemoveAll(path)
+	if err != nil {
+		pecho("warn", "Could not clean path: " + path + ": " + err.Error())
+		return
+	}
+	pecho("debug", "Done cleaning" + path)
 }
 
 func unknownSigHandler(writer http.ResponseWriter, req *http.Request) {
