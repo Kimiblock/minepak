@@ -157,6 +157,7 @@ func pickTempDir() string {
 
 // Peer MUST check installed is true!
 func checkPkgData(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo, corePath string) {
+	returnInfo.name = pkgname
 	dbconn.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(pkgname))
 		if bucket != nil {
