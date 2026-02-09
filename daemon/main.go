@@ -316,6 +316,9 @@ func unknownSigHandler(writer http.ResponseWriter, req *http.Request) {
 	var resp response
 	resp.success = false
 	resp.log = "Unknown operation"
+	jsonObj, _ := json.Marshal(resp)
+	writer.Write(jsonObj)
+	pecho("warn", "Got unknown signal")
 }
 
 func listenSignals() {
