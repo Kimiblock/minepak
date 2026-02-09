@@ -179,6 +179,16 @@ func checkPkgData(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo, corePath
 			if core == true {
 				returnInfo.core = true
 			}
+			returnInfo.flavor = string(bucket.Get([]byte("flavor")))
+			returnInfo.requireCore = string(bucket.Get([]byte("requireCore")))
+			returnInfo.version = string(bucket.Get([]byte("version")))
+			returnInfo.epoch, err = strconv.Atoi(string(bucket.Get([]byte("epoch"))))
+			if err != nil {
+				pecho("warn", "Unable to read epoch")
+				returnInfo.epoch = 0
+			}
+			// TODO: depends and configs
+
 		} else {
 			returnInfo.installed = false
 		}
