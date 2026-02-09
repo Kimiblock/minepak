@@ -22,7 +22,7 @@ Package bolt database spec:
 name: package name
 version: version
 epoch: high priority version sort overrider, must be a valid uint
-core: "true" / "false"
+core: true / false
 flavor: Paper/Spigot/Folia etc.
 path: Path to the executable jar file (Core only)
 requireCore: A core flavour to require on. (Plugin only)
@@ -46,9 +46,9 @@ A bucket contains the following KEY=VAL pairs
 name: pkgname
 version: version
 epoch: high priority version sort overrider, must be a valid uint
-installed: "true" / "false"
+installed: true / false
 flavor: Paper/Spigot/Folia etc.
-path: Path to the executable jar file (Core only)
+core: true / false
 requireCore: A core flavour to require on. (Plugin only)
 depends: JSON encoded dependency list
 config: JSON encoded path list
