@@ -294,16 +294,73 @@ func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success b
 
 	pecho("info", "Updating database metadata")
 	db.Batch(func(tx *bolt.Tx) error {
+
 		bucket, err := tx.CreateBucket([]byte(info.name))
 		if err != nil {
 			pecho("warn", "Could not install: failed to create a new bucket: " + err.Error())
 		}
+		metaBuck, err := bucket.CreateBucket([]byte("files"))
+		if err != nil {
+			pecho("warn", "Could not install: failed to create a new bucket: " + err.Error())
+			success = false
+			return nil
+		}
+
+		configsJson, err := json.Marshal(info.configs)
+		if err != nil {
+			pecho("warn", "Could not marshal depends info: " + err.Error())
+			success = false
+			return nil
+		}
+		dependsJson, err := json.Marshal(info.depends)
+		if err != nil {
+			pecho("warn", "Could not marshal depends info: " + err.Error())
+			success = false
+			return nil
+		}
+
+		// Map for database internal structure
+		var infoMap = map[string]string{
+			"name":			info.name,
+			"version":		info.version,
+			"epoch":		strconv.Itoa(info.epoch),
+			"installed":		strconv.FormatBool(info.installed),
+			"flavor":		info.flavor,
+			"core":			strconv.FormatBool(info.core),
+			"depends":		string(dependsJson),
+			"configs":		string(configsJson),
+		}
+
+		if info.core == false {
+			infoMap["requireCore"] = info.requireCore
+		}
+
+		for k, v := range infoMap {
+			key := []byte(k)
+			val := []byte(v)
+			err := metaBuck.Put(key, val)
+			if err != nil {
+				pecho("warn", "Could not update metadata: " + err.Error())
+				success = false
+				return nil
+			}
+		}
+
+
 		filesBuck, err := bucket.CreateBucket([]byte("files"))
 		if err != nil {
 			pecho("warn", "Could not install: failed to create a new bucket: " + err.Error())
+			success = false
+			return nil
 		}
+
+		var entryCount uint
 		for key, val := range filesMap {
+			if info.core == true && entryCount > 1 {
+				pecho("warn", "Core should only have one entry")
+			}
 			filesBuck.Put([]byte(key), []byte(val))
+			entryCount++
 		}
 
 		success = true
