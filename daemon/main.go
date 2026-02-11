@@ -207,7 +207,7 @@ func checkDbforPkg(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo) {
 
 /*
 	Used to retrieve info from a package database
-	Peer must check valid and installed!
+	Peer must check valid!
 */
 func checkPkgData(dbpath string) (returnInfo pkgInfo, valid bool, fileMap map[string]string) {
 	dbconn, err := bolt.Open(dbpath, 0700, nil)
