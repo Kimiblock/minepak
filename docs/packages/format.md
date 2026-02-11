@@ -42,6 +42,9 @@ Internal database separates package data into multiple buckets. The bucket name 
 A bucket contains the following KEY=VAL pairs
 
 ```
+[System]
+	core=pkgname
+
 [Bucket]
 	name: pkgname
 	version: version
