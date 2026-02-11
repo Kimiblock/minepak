@@ -56,3 +56,7 @@ A bucket contains the following KEY=VAL pairs
 		Multiple obj: path entries (Non-core)
 		Single core: path entry (Core)
 ```
+
+# Package rules
+
+The package name MUST only contain A-Z, a-z, and numbers. It MUST not contain special characters and spaces.
