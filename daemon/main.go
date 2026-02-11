@@ -268,7 +268,20 @@ func checkPkgData(dbpath string) (returnInfo pkgInfo, valid bool, fileMap map[st
 
 // Writes package metadata to database, and check for conflicts
 func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success bool) {
+	var coreInstalled bool
 	db.View(func(tx *bolt.Tx) error {
+		sysBuck := tx.Bucket([]byte("System"))
+		if sysBuck == nil {
+			coreInstalled = false
+			pecho("debug", "Did not find any core in database")
+		} else {
+			if len(sysBuck.Get([]byte("core"))) == 0 {
+				coreInstalled = false
+				pecho("debug", "Did not find any core in database")
+			} else {
+				coreInstalled = true
+			}
+		}
 		bucket := tx.Bucket([]byte(info.name))
 		if bucket != nil {
 			pecho("warn", "Could not install: another package present")
@@ -291,7 +304,6 @@ func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success b
 	})
 
 	// TODO: fill in metadata, and maybe a restructure of DB
-
 	pecho("info", "Updating database metadata")
 	db.Batch(func(tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucket([]byte(info.name))
@@ -339,7 +351,12 @@ func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success b
 				success = false
 				return nil
 			} else {
-				bk.Put([]byte("core"), []byte(info.name))
+				if coreInstalled == false {
+					bk.Put([]byte("core"), []byte(info.name))
+				} else {
+					coreExist := string(bk.Get([]byte("core")))
+					pecho("warn", "Core conflict: already installed " + coreExist)
+				}
 			}
 		}
 
