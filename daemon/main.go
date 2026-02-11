@@ -254,7 +254,7 @@ func checkPkgData(dbpath string) (returnInfo pkgInfo, valid bool, fileMap map[st
 		bucketName := "files"
 		bucket = tx.Bucket([]byte(bucketName))
 		if bucket == nil {
-			pecho("warn", "Could not read package: Malformed database")
+			pecho("warn", "Could not read package files: bucket missing")
 			return nil
 		}
 		cursor := bucket.Cursor()
