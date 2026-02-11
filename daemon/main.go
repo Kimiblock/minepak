@@ -187,7 +187,15 @@ func checkPkgData(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo, corePath
 				pecho("warn", "Unable to read epoch")
 				returnInfo.epoch = 0
 			}
-			// TODO: depends and configs
+			err = json.Unmarshal(bucket.Get([]byte("depends")), &returnInfo.depends)
+			if err != nil {
+				pecho("warn", "Unable to unmarshal depends: " + err.Error())
+			}
+			err = json.Unmarshal(bucket.Get([]byte("configs")), &returnInfo.configs)
+			if err != nil {
+				pecho("warn", "Unable to unmarshal configs: " + err.Error())
+			}
+
 
 		} else {
 			returnInfo.installed = false
