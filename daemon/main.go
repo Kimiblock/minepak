@@ -371,67 +371,17 @@ func (dbcore *dbInfo) installPackageFromSocket(writer http.ResponseWriter, req *
 		"metadata.bolt",
 	)
 
-	db, err := bolt.Open(dbPath, 0700, nil)
-	if err != nil {
-		pecho("warn", "Could not read malformed package database")
-		resp.log = "Daemon could not read corrupted database"
+	var info pkgInfo
+	var valid bool
+	var fileMap = make(map[string]string)
+
+	info, valid , fileMap = checkPkgData(dbPath)
+	if valid == false {
+		pecho("warn", "checkPkgData returned invalid status")
+		resp.log = "Package database is invalid or corrupted"
 		resp.success = false
 		jsonObj, _ := json.Marshal(resp)
 		writer.Write(jsonObj)
-		return
-	}
-
-	var info pkgInfo
-	var fileMap = make(map[string]string)
-
-	err = db.View(func(tx *bolt.Tx) error {
-		bucketName := "metadata"
-		bucket := tx.Bucket([]byte(bucketName))
-		if bucket == nil {
-			resp.success = false
-			resp.log = "Daemon could not read package: Malformed database"
-			pecho("warn", "Could not read package: Malformed database")
-			jsonObj, _ := json.Marshal(resp)
-			writer.Write(jsonObj)
-			return nil
-		}
-		pkgname := bucket.Get([]byte("name"))
-		pkgtype := bucket.Get([]byte("core"))
-		if len(pkgname) == 0 || len(pkgtype) == 0 {
-			pecho("warn", "Malformed package database")
-			resp.success = false
-			resp.log = "Malformed package database"
-			jsonObj, _ := json.Marshal(resp)
-			writer.Write(jsonObj)
-			return nil
-		}
-		info.name = string(pkgname)
-		if string(pkgtype) == "core" {
-			info.core = true
-		} else {
-			info.core = false
-		}
-
-		bucketName = "files"
-		bucket = tx.Bucket([]byte(bucketName))
-		if bucket == nil {
-			resp.success = false
-			resp.log = "Daemon could not read package: Malformed database"
-			pecho("warn", "Could not read package: Malformed database")
-			jsonObj, _ := json.Marshal(resp)
-			writer.Write(jsonObj)
-			return nil
-		}
-		cursor := bucket.Cursor()
-		for key, val := cursor.First(); key != nil; key, val = cursor.Next() {
-			fileMap[string(key)] = string(val)
-		}
-
-		pecho("debug", "Finished resolving file map")
-
-		return nil
-	})
-	if len(resp.log) > 0 {
 		return
 	}
 
