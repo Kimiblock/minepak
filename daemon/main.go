@@ -447,8 +447,6 @@ func (dbcore *dbInfo) installPackageFromSocket(writer http.ResponseWriter, req *
 
 	go cleanOnTimer(tempPath, 1*time.Minute)
 
-	db.Close()
-
 }
 
 func cleanOnTimer(path string, timer time.Duration) {
@@ -549,7 +547,7 @@ func startServerCore(db *bolt.DB) string {
 			}
 			serverKind = string(bucket.Get([]byte("flavor")))
 			serverPath = string(bucket.Get([]byte("server-core")))
-			serverVer = string(bucket.Get([]byte(epoch))) + ":" + string(bucket.Get([]byte(version)))
+			serverVer = string(bucket.Get([]byte("epoch"))) + ":" + string(bucket.Get([]byte("version")))
 			return nil
 		},
 	)
