@@ -397,12 +397,9 @@ func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success b
 			filesBuck.Put([]byte(key), []byte(val))
 			entryCount++
 		}
-
 		success = true
 		return nil
 	})
-
-
 	return
 }
 
