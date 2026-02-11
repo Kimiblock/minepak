@@ -53,5 +53,6 @@ A bucket contains the following KEY=VAL pairs
 	depends: JSON encoded dependency list
 	configs: JSON encoded path list
 	[files]
-	objname: relative path to the managed file, could be more than 1
+		Multiple obj: path entries (Non-core)
+		Single core: path entry (Core)
 ```
