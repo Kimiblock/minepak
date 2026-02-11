@@ -29,7 +29,8 @@ depends: JSON encoded dependency list
 configs: JSON encoded path list
 
 [files]
-obj: path
+	Multiple obj: path entries (Non-core)
+	Single core: path entry (Core)
 ```
 
 For a server core package, the `[files]` section MUST only contain the core executable, and it must be located directly in root path. The object name MUST be `server-core`.
