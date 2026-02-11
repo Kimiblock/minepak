@@ -195,8 +195,6 @@ func checkPkgData(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo, corePath
 			if err != nil {
 				pecho("warn", "Unable to unmarshal configs: " + err.Error())
 			}
-
-
 		} else {
 			returnInfo.installed = false
 		}
