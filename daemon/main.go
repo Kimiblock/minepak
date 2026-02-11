@@ -159,7 +159,7 @@ func pickTempDir() string {
 func checkDbforPkg(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo) {
 	returnInfo.name = pkgname
 	dbconn.View(func(tx *bolt.Tx) error {
-		sysBuck := tx.Bucket([]byte("System"))
+		sysBuck := tx.Bucket([]byte("Packages"))
 		if sysBuck == nil {
 			pecho("warn", "Could not query system database: ")
 			return nil
@@ -398,6 +398,15 @@ func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success b
 			}
 			filesBuck.Put([]byte(key), []byte(val))
 			entryCount++
+		}
+
+		pkgBuck, err := tx.CreateBucketIfNotExists([]byte("Packages"))
+		if err != nil {
+			pecho("warn", "Could not create packages bucket: " + err.Error())
+			success = false
+			return nil
+		} else {
+			pkgBuck.Put([]byte(info.name), []byte("true"))
 		}
 		success = true
 		return nil
