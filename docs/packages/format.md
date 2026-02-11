@@ -24,7 +24,6 @@ version: version
 epoch: high priority version sort overrider, must be a valid uint
 core: true / false
 flavor: Paper/Spigot/Folia etc.
-path: Path to the executable jar file (Core only)
 requireCore: A core flavour to require on. (Plugin only)
 depends: JSON encoded dependency list
 configs: JSON encoded path list
