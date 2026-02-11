@@ -294,7 +294,6 @@ func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success b
 
 	pecho("info", "Updating database metadata")
 	db.Batch(func(tx *bolt.Tx) error {
-
 		bucket, err := tx.CreateBucket([]byte(info.name))
 		if err != nil {
 			pecho("warn", "Could not install: failed to create a new bucket: " + err.Error())
@@ -333,6 +332,15 @@ func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success b
 
 		if info.core == false {
 			infoMap["requireCore"] = info.requireCore
+		} else {
+			bk, err := tx.CreateBucketIfNotExists([]byte("System"))
+			if err != nil {
+				pecho("warn", "Could not create system bucket: " + err.Error())
+				success = false
+				return nil
+			} else {
+				bk.Put([]byte("core"), []byte(info.name))
+			}
 		}
 
 		for k, v := range infoMap {
