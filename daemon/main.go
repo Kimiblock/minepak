@@ -403,6 +403,17 @@ func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success b
 	return
 }
 
+func rmPkg (packageName string, dbcore *dbInfo) (resp response) {
+	pecho("debug", "Removing package " + packageName)
+
+
+
+
+
+	resp.success = true
+	return
+}
+
 // Notify the other end to send data, then receive
 
 /*
