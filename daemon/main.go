@@ -356,6 +356,8 @@ func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success b
 				} else {
 					coreExist := string(bk.Get([]byte("core")))
 					pecho("warn", "Core conflict: already installed " + coreExist)
+					success = false
+					return nil
 				}
 			}
 		}
