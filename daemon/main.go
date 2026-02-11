@@ -416,9 +416,15 @@ func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success b
 
 func rmPkg (packageName string, dbcore *dbInfo) (resp response) {
 	pecho("debug", "Removing package " + packageName)
+	pkgInfo := checkDbforPkg(dbcore.db, packageName)
+	pecho("debug", "Retrieved package state: " + strconv.FormatBool(pkgInfo.installed))
 
+	if pkgInfo.installed {
 
-
+	} else {
+		resp.success = false
+		resp.log = "Package does not exist in database"
+	}
 
 
 	resp.success = true
