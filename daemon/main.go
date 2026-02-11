@@ -159,20 +159,22 @@ func pickTempDir() string {
 func checkDbforPkg(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo) {
 	returnInfo.name = pkgname
 	dbconn.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(pkgname))
-		if bucket != nil {
-			installed, err := strconv.ParseBool(string(bucket.Get([]byte("installed"))))
-			if err != nil {
-				pecho("warn", "Treating unknown installed status as uninstalled")
-				installed = false
-			}
-			if installed == false {
+		sysBuck := tx.Bucket([]byte("System"))
+		if sysBuck == nil {
+			pecho("warn", "Could not query system database: ")
+			return nil
+		} else {
+			rawVal := sysBuck.Get([]byte(pkgname))
+			if rawVal == nil || string(rawVal) != "true" {
+				pecho("debug", "Package state: uninstalled from database")
 				returnInfo.installed = false
 				return nil
 			}
-			installed = true
-			var core bool
-			core, err = strconv.ParseBool(string(bucket.Get([]byte("core"))))
+		}
+		returnInfo.installed = true
+		bucket := tx.Bucket([]byte(pkgname))
+		if bucket != nil {
+			core, err := strconv.ParseBool(string(bucket.Get([]byte("core"))))
 			if err != nil {
 				pecho("warn", "Treating unknown core status as false")
 			}
@@ -205,7 +207,7 @@ func checkDbforPkg(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo) {
 
 /*
 	Used to retrieve info from a package database
-	Peer must check valid!
+	Peer must check valid and installed!
 */
 func checkPkgData(dbpath string) (returnInfo pkgInfo, valid bool, fileMap map[string]string) {
 	dbconn, err := bolt.Open(dbpath, 0700, nil)
