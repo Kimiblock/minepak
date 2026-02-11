@@ -156,7 +156,7 @@ func pickTempDir() string {
 }
 
 // Peer MUST check installed is true!
-func checkPkgData(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo, corePath string) {
+func checkDbforPkg(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo) {
 	returnInfo.name = pkgname
 	dbconn.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(pkgname))
@@ -198,6 +198,72 @@ func checkPkgData(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo, corePath
 		} else {
 			returnInfo.installed = false
 		}
+		return nil
+	})
+	return
+}
+
+// Peer must check valid!
+func checkPkgData(dbpath string) (returnInfo pkgInfo, valid bool, fileMap map[string]string) {
+	dbconn, err := bolt.Open(dbpath, 0700, nil)
+	if err != nil {
+		pecho("warn", "Could not open package database: " + err.Error())
+		return
+	}
+	dbconn.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("metadata"))
+		if bucket != nil {
+			returnInfo.name = string(bucket.Get([]byte("name")))
+			if len(returnInfo.name) == 0 {
+				pecho("warn", "Invalid package name: empty string")
+				return nil
+			} else if strings.Contains(returnInfo.name, " ") {
+				pecho("warn", "Package name must not contain spaces")
+				return nil
+			}
+			var core bool
+			core, err = strconv.ParseBool(string(bucket.Get([]byte("core"))))
+			if err != nil {
+				pecho("warn", "Treating unknown core status as false")
+			}
+			if core == true {
+				returnInfo.core = true
+			}
+			returnInfo.flavor = string(bucket.Get([]byte("flavor")))
+			returnInfo.requireCore = string(bucket.Get([]byte("requireCore")))
+			returnInfo.version = string(bucket.Get([]byte("version")))
+			returnInfo.epoch, err = strconv.Atoi(string(bucket.Get([]byte("epoch"))))
+			if err != nil {
+				pecho("warn", "Unable to read epoch")
+				returnInfo.epoch = 0
+			}
+			err = json.Unmarshal(bucket.Get([]byte("depends")), &returnInfo.depends)
+			if err != nil {
+				pecho("warn", "Unable to unmarshal depends: " + err.Error())
+			}
+			err = json.Unmarshal(bucket.Get([]byte("configs")), &returnInfo.configs)
+			if err != nil {
+				pecho("warn", "Unable to unmarshal configs: " + err.Error())
+			}
+		} else {
+			pecho("warn", "Malformed database: no metadata section")
+			return nil
+		}
+
+
+		bucketName := "files"
+		bucket = tx.Bucket([]byte(bucketName))
+		if bucket == nil {
+			pecho("warn", "Could not read package: Malformed database")
+			return nil
+		}
+		cursor := bucket.Cursor()
+		for key, val := cursor.First(); key != nil; key, val = cursor.Next() {
+			fileMap[string(key)] = string(val)
+		}
+
+
+		valid = true
 		return nil
 	})
 	return
