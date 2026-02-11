@@ -200,7 +200,6 @@ func checkPkgData(dbconn *bolt.DB, pkgname string) (returnInfo pkgInfo, corePath
 		}
 		return nil
 	})
-
 	return
 }
 
