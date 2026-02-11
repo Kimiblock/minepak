@@ -290,6 +290,8 @@ func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success b
 		return nil
 	})
 
+	// TODO: fill in metadata, and maybe a restructure of DB
+
 	pecho("info", "Updating database metadata")
 	db.Batch(func(tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucket([]byte(info.name))
