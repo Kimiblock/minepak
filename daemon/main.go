@@ -266,13 +266,58 @@ func checkPkgData(dbpath string) (returnInfo pkgInfo, valid bool, fileMap map[st
 	return
 }
 
+// Writes package metadata to database, and check for conflicts
+func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success bool) {
+	db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(info.name))
+		if bucket != nil {
+			pecho("warn", "Could not install: another package present")
+			success = false
+			return nil
+		}
+
+		cur := tx.Cursor()
+		for key, val := cur.First(); key != nil; key, val = cur.Next() {
+			for _, v := range filesMap {
+				if v == string(val) {
+					pecho("warn", "Collision on " + v + " of object " + string(key))
+					success = false
+					return nil
+				}
+			}
+		}
+		success = true
+		return nil
+	})
+
+	pecho("info", "Updating database metadata")
+	db.Batch(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucket([]byte(info.name))
+		if err != nil {
+			pecho("warn", "Could not install: failed to create a new bucket: " + err.Error())
+		}
+		filesBuck, err := bucket.CreateBucket([]byte("files"))
+		if err != nil {
+			pecho("warn", "Could not install: failed to create a new bucket: " + err.Error())
+		}
+		for key, val := range filesMap {
+			filesBuck.Put([]byte(key), []byte(val))
+		}
+
+		success = true
+		return nil
+	})
+
+
+	return
+}
+
 // Notify the other end to send data, then receive
 
 /*
 	For now there's only one part in a mp message,
 	the client should send header minepakType = package
 */
-
 func (dbcore *dbInfo) installPackageFromSocket(writer http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	var resp response
@@ -383,6 +428,9 @@ func (dbcore *dbInfo) installPackageFromSocket(writer http.ResponseWriter, req *
 	}
 
 	pecho("debug", "Starting installation...")
+
+
+
 	objpath := filepath.Join(
 		tempPath,
 		"object",
