@@ -27,7 +27,7 @@ flavor: Paper/Spigot/Folia etc.
 path: Path to the executable jar file (Core only)
 requireCore: A core flavour to require on. (Plugin only)
 depends: JSON encoded dependency list
-config: JSON encoded path list
+configs: JSON encoded path list
 
 [files]
 obj: path
@@ -51,6 +51,6 @@ flavor: Paper/Spigot/Folia etc.
 core: true / false
 requireCore: A core flavour to require on. (Plugin only)
 depends: JSON encoded dependency list
-config: JSON encoded path list
+configs: JSON encoded path list
 objname: relative path to the managed file, could be more than 1
 ```
