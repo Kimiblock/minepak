@@ -330,6 +330,12 @@ func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success b
 			return nil
 		}
 
+		if len(info.name) > 100 {
+			pecho("warn", "Invalid package: name too long")
+			success = false
+			return nil
+		}
+
 		// Map for database internal structure
 		var infoMap = map[string]string{
 			"name":			info.name,
