@@ -250,7 +250,6 @@ func checkPkgData(dbpath string) (returnInfo pkgInfo, valid bool, fileMap map[st
 			return nil
 		}
 
-
 		bucketName := "files"
 		bucket = tx.Bucket([]byte(bucketName))
 		if bucket == nil {
@@ -261,8 +260,6 @@ func checkPkgData(dbpath string) (returnInfo pkgInfo, valid bool, fileMap map[st
 		for key, val := cursor.First(); key != nil; key, val = cursor.Next() {
 			fileMap[string(key)] = string(val)
 		}
-
-
 		valid = true
 		return nil
 	})
