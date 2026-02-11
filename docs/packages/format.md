@@ -44,12 +44,13 @@ A bucket contains the following KEY=VAL pairs
 ```
 [System]
 	core=pkgname
+[Packages]
+	pkgname: bool (installed or not)
 
 [Bucket]
 	name: pkgname
 	version: version
 	epoch: high priority version sort overrider, must be a valid uint
-	installed: true / false
 	flavor: Paper/Spigot/Folia etc.
 	core: true / false
 	requireCore: A core flavour to require on. (Plugin only)
@@ -62,4 +63,4 @@ A bucket contains the following KEY=VAL pairs
 
 # Package rules
 
-The package name MUST only contain A-Z, a-z, ".", and numbers. It MUST not contain special characters and spaces.
+The package name MUST only contain A-Z, a-z, ".", and numbers. It MUST not contain special characters and spaces. It should be at most 100 characters long.
