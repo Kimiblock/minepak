@@ -13,7 +13,7 @@ top.kimiblock.minepak.package/
 ```
 
 
-The bolt data base MUST have 2 buckets: metadata and files. The former one MUST store `name` and `core`, whereas files must hold a `object:relpath` key-value relationship.
+The bolt data base MUST have 2 buckets: metadata and files. The former one MUST store `name` and `core`, whereas files must hold a `object:relpath` key-value relationship. The object name must be unique per package, and SHOULD have a prefix of package name.
 
 Package bolt database spec:
 
@@ -42,14 +42,15 @@ A bucket contains the following KEY=VAL pairs
 
 ```
 [Bucket]
-name: pkgname
-version: version
-epoch: high priority version sort overrider, must be a valid uint
-installed: true / false
-flavor: Paper/Spigot/Folia etc.
-core: true / false
-requireCore: A core flavour to require on. (Plugin only)
-depends: JSON encoded dependency list
-configs: JSON encoded path list
-objname: relative path to the managed file, could be more than 1
+	name: pkgname
+	version: version
+	epoch: high priority version sort overrider, must be a valid uint
+	installed: true / false
+	flavor: Paper/Spigot/Folia etc.
+	core: true / false
+	requireCore: A core flavour to require on. (Plugin only)
+	depends: JSON encoded dependency list
+	configs: JSON encoded path list
+	[files]
+	objname: relative path to the managed file, could be more than 1
 ```
