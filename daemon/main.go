@@ -630,6 +630,18 @@ func (dbcore *dbInfo) installPackageFromSocket(writer http.ResponseWriter, req *
 		return
 	}
 
+	if info.installed == true {
+		pecho("info", "Removing current version" + info.version)
+		var resp response
+		resp = rmPkg(info.name, dbcore)
+		if resp.success == false {
+			pecho("warn", "Could not remove package")
+			jsonObj, _ := json.Marshal(resp)
+			writer.Write(jsonObj)
+			return
+		}
+	}
+
 	pecho("debug", "Starting installation...")
 
 
