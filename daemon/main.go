@@ -1,24 +1,26 @@
 package main
 
 import (
+	"archive/tar"
+	"bufio"
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
-	"github.com/BurntSushi/toml"
-	"os"
 	"io"
-	"github.com/boltdb/bolt"
-	"time"
+	"math/rand"
+	"mime/multipart"
 	"net"
 	"net/http"
-	"mime/multipart"
-	"encoding/json"
-	"bufio"
-	"math/rand"
-	"strconv"
-	"compress/gzip"
-	"archive/tar"
-	"path/filepath"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
+
+	"github.com/BurntSushi/toml"
+	"github.com/boltdb/bolt"
 )
 
 const (
@@ -465,6 +467,54 @@ func rmPkg (packageName string, dbcore *dbInfo) (resp response) {
 	return
 }
 
+/*
+	This endpoint receives json-encoded package list to remove
+*/
+func (dbcore *dbInfo) rmPkgSigHandler(writer http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	var wg sync.WaitGroup
+	var resp response
+	var pkglist []string
+	var resChan = make(chan response, 16)
+	reqBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		pecho("warn", "Could not read request: " + err.Error())
+		resp.log = "Daemon could not read request: " + err.Error()
+		jsonObj, _ := json.Marshal(resp)
+		writer.Write(jsonObj)
+	}
+	err = json.Unmarshal(reqBody, &pkglist)
+	if err != nil {
+		pecho("warn", "Could not read request: " + err.Error())
+		resp.log = "Daemon could not read request: " + err.Error()
+		jsonObj, _ := json.Marshal(resp)
+		writer.Write(jsonObj)
+	}
+	pecho("info", "Removing package list: " + strings.Join(pkglist, ", "))
+	for _, val := range pkglist {
+		wg.Go(func() {
+			pecho("info", "Starting removal of: " + val)
+			resChan <- rmPkg(val, dbcore)
+		})
+	}
+	go func() {
+		wg.Wait()
+		close(resChan)
+	} ()
+	for arg := range resChan {
+		var respN response
+		respN = arg
+		if respN.success == false {
+			resp.log = resp.log + " " + respN.log
+			resp.success = false
+		}
+	}
+
+	jsonObj, _ := json.Marshal(resp)
+	writer.Write(jsonObj)
+
+}
+
 // Notify the other end to send data, then receive
 
 /*
@@ -690,6 +740,7 @@ func listenSignals(db *bolt.DB) {
 
 	http.HandleFunc("/", unknownSigHandler)
 	http.HandleFunc("/instpkg", srvFunc.installPackageFromSocket)
+	http.HandleFunc("/rmpkg", srvFunc.rmPkgSigHandler)
 
 
 	http.Serve(runtimeInfo.controlListen, nil)
