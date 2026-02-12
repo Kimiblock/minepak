@@ -414,10 +414,6 @@ func instPkgDb(info pkgInfo, db *bolt.DB, filesMap map[string]string) (success b
 	return
 }
 
-/* Peer should check resp.success
-	Still stub
-	TODO: implement actual file deletion and metadata clearing
-*/
 func rmPkg (packageName string, dbcore *dbInfo) (resp response) {
 	pecho("debug", "Removing package " + packageName)
 	pkgInfo := checkDbforPkg(dbcore.db, packageName)
@@ -432,7 +428,27 @@ func rmPkg (packageName string, dbcore *dbInfo) (resp response) {
 				resp.log = "Daemon could not open bucket of package: empty"
 				return nil
 			}
-			return nil
+			filesBuck := pkgBuck.Bucket([]byte("files"))
+			if filesBuck != nil {
+				c := filesBuck.Cursor()
+				for k, v := c.First(); k != nil; k, v = c.Next() {
+					pecho("debug", "Removing file: " + string(v))
+					err := os.RemoveAll(string(v))
+					if err != nil {
+						pecho(
+							"warn",
+							"Could not remove" + string(v) + ": " + err.Error(),
+						)
+					}
+
+				}
+				pkgBuck.DeleteBucket([]byte("files"))
+			} else {
+				pecho("info", "Could not find any files in package")
+			}
+
+			err := tx.DeleteBucket([]byte(packageName))
+			return err
 		})
 		if err != nil {
 			pecho("warn", "Could not modify database: " + err.Error())
