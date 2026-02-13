@@ -1,0 +1,21 @@
+# Logging
+# 	level can be an integer between 1 and 3.
+# 	1	-> Debug
+# 	2	-> Info
+# 	3	-> Warning
+logLevel = 1
+
+# Absolute path to the database
+database = "example.bolt"
+
+# The runtime directory used for creating sockets. You NEED TO CHANGE THIS!
+runtimeDirectory = "/tmp"
+
+# Temporary directory to host cache produced by daemon. If unset, defaults to /tmp
+# temporaryDirectory = "/tmp/123456"
+
+# Java executable path, defaults to "java"
+# javaPath = ""
+
+# JVM arguments, separated by spaces
+# jvmArgs = ""
